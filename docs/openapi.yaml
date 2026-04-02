@@ -18,6 +18,23 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  # ================== ТАГИ ================
+  tags:
+    - name: Auth
+      description: Auth Service — управление аутентификацией и авторизацией
+    - name: User
+      description: User Service — управление профилями и рейтингами
+    - name: Item
+      description: Item Service — управление вещами и каталогом
+    - name: Subscription
+      description: Subscription Service — управление подписками и доступом
+    - name: Payment
+      description: Payment Service — обработка платежей
+    - name: Exchange
+      description: Exchange Service — управление процессом обмена
+    - name: Chat
+      description: Chat Service — система сообщений
+
   schemas:
     Error:
       type: object
@@ -249,9 +266,13 @@ components:
           type: integer
           example: 2
 
+
+# ================== ПУТИ ==================
 paths:
   /auth/register:
     post:
+      tags:
+        - Auth
       summary: Register user by email
       requestBody:
         required: true
@@ -290,6 +311,8 @@ paths:
 
   /auth/login:
     post:
+      tags:
+        - Auth
       summary: Login by email and password
       requestBody:
         required: true
@@ -313,6 +336,9 @@ paths:
 
   /auth/me:
     get:
+      tags:
+        - Auth
+        - User
       summary: Get current user data and subscription status
       security:
         - bearerAuth: []
@@ -326,6 +352,8 @@ paths:
 
   /auth/request-password-reset:
     post:
+      tags:
+        - Auth
       summary: Request password reset link by email
       requestBody:
         required: true
@@ -347,6 +375,8 @@ paths:
 
   /auth/reset-password:
     post:
+      tags:
+        - Auth
       summary: Reset password by token
       requestBody:
         required: true
@@ -366,8 +396,11 @@ paths:
         '200':
           description: Password updated
 
+  # ===================================== SERVICE USER
   /profile:
     get:
+      tags:
+        - User
       summary: Get own profile
       security:
         - bearerAuth: []
@@ -379,6 +412,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserRef'
     put:
+      tags:
+        - User
       summary: Update own profile
       security:
         - bearerAuth: []
@@ -402,8 +437,13 @@ paths:
         '200':
           description: Profile updated
 
+
+  # ===================================== SERVICE PAYMENT
   /subscription/start:
     post:
+      tags:
+        - Subscription
+        - Payment
       summary: Start subscription purchase flow (one fixed plan)
       security:
         - bearerAuth: []
@@ -420,6 +460,9 @@ paths:
 
   /subscription/payment-url:
     get:
+      tags:
+        - Subscription
+        - Payment
       summary: Get redirect URL to payment gateway (Yandex‑Kassa)
       security:
         - bearerAuth: []
@@ -443,6 +486,8 @@ paths:
 
   /webhook/yandex-kassa:
     post:
+      tags:
+        - Payment
       summary: Payment gateway webhook (Yandex‑Kassa)
       requestBody:
         required: true
@@ -455,8 +500,12 @@ paths:
         '200':
           description: Webhook processed
 
+
+  # ===================================== SERVICE ITEM
   /images/bulk-upload:
     post:
+      tags:
+        - Item
       summary: Upload 1–5 images for item (async Retoucher processing)
       security:
         - bearerAuth: []
@@ -485,6 +534,8 @@ paths:
 
   /images/batch/{batchId}/status:
     get:
+      tags:
+        - Item
       summary: Get batch processing status (pending/processing/failed)
       parameters:
         - name: batchId
@@ -502,6 +553,8 @@ paths:
 
   /images/{imageId}/status:
     get:
+      tags:
+        - Item
       summary: Get individual image processing status
       parameters:
         - name: imageId
@@ -519,6 +572,8 @@ paths:
 
   /items:
     get:
+      tags:
+        - Item
       summary: Get items catalog (public)
       parameters:
         - name: city
@@ -547,6 +602,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Item'
     post:
+      tags:
+        - Item
       summary: Create item (only if all images have status = success)
       security:
         - bearerAuth: []
@@ -568,6 +625,8 @@ paths:
 
   /items/my:
     get:
+      tags:
+        - Item
       summary: Get user's items
       security:
         - bearerAuth: []
@@ -583,6 +642,8 @@ paths:
 
   /items/{itemId}:
     get:
+      tags:
+        - Item
       summary: Get item details
       parameters:
         - name: itemId
@@ -600,6 +661,8 @@ paths:
         '404':
           description: Item not found
     put:
+      tags:
+        - Item
       summary: Update item
       security:
         - bearerAuth: []
@@ -623,6 +686,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Item'
     delete:
+      tags:
+        - Item
       summary: Delete item (soft)
       security:
         - bearerAuth: []
@@ -636,8 +701,12 @@ paths:
         '200':
           description: Item marked as deleted
 
+
+  # ===================================== SERVICE EXCHANGE
   /exchanges:
     post:
+      tags:
+        - Exchange
       summary: Initiate exchange
       security:
         - bearerAuth: []
@@ -665,6 +734,8 @@ paths:
 
   /exchanges/{exchangeId}/accept:
     post:
+      tags:
+        - Exchange
       summary: Accept exchange proposal
       security:
         - bearerAuth: []
@@ -684,6 +755,8 @@ paths:
 
   /exchanges/{exchangeId}/cancel:
     post:
+      tags:
+        - Exchange
       summary: Cancel exchange (before accept)
       security:
         - bearerAuth: []
@@ -699,6 +772,8 @@ paths:
 
   /exchanges/{exchangeId}/complete:
     post:
+      tags:
+        - Exchange
       summary: Complete exchange
       security:
         - bearerAuth: []
@@ -716,8 +791,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Exchange'
 
+
+  # ===================================== SERVICE CHAT
   /chats:
     get:
+      tags:
+        - Chat
       summary: Get user chats list
       security:
         - bearerAuth: []
@@ -733,6 +812,8 @@ paths:
 
   /chats/{chatId}:
     get:
+      tags:
+        - Chat
       summary: Get chat details and messages
       security:
         - bearerAuth: []
@@ -757,6 +838,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Message'
     post:
+      tags:
+        - Chat
       summary: Send message to chat
       security:
         - bearerAuth: []
@@ -790,6 +873,8 @@ paths:
 
   /chats/{chatId}/messages:
     get:
+      tags:
+        - Chat
       summary: Get messages with pagination
       security:
         - bearerAuth: []
@@ -819,8 +904,12 @@ paths:
                 items:
                   $ref: '#/components/schemas/Message'
 
+
+  # ===================================== SERVICE EXCHANGE / REVIEWS
   /reviews:
     get:
+      tags:
+        - Exchange
       summary: Get reviews received by current user
       security:
         - bearerAuth: []
@@ -835,6 +924,8 @@ paths:
                   $ref: '#/components/schemas/Review'
 
     post:
+      tags:
+        - Exchange
       summary: Leave review after completed exchange
       security:
         - bearerAuth: []
