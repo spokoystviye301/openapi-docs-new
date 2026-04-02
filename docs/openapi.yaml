@@ -10,15 +10,8 @@ servers:
 
 security:
   - bearerAuth: []
-
+  
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  # ================== ТАГИ ================
   tags:
     - name: Auth
       description: Auth Service — управление аутентификацией и авторизацией
@@ -34,6 +27,12 @@ components:
       description: Exchange Service — управление процессом обмена
     - name: Chat
       description: Chat Service — система сообщений
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
   schemas:
     Error:
@@ -266,8 +265,6 @@ components:
           type: integer
           example: 2
 
-
-# ================== ПУТИ ==================
 paths:
   /auth/register:
     post:
@@ -396,7 +393,6 @@ paths:
         '200':
           description: Password updated
 
-  # ===================================== SERVICE USER
   /profile:
     get:
       tags:
@@ -437,8 +433,6 @@ paths:
         '200':
           description: Profile updated
 
-
-  # ===================================== SERVICE PAYMENT
   /subscription/start:
     post:
       tags:
@@ -500,8 +494,6 @@ paths:
         '200':
           description: Webhook processed
 
-
-  # ===================================== SERVICE ITEM
   /images/bulk-upload:
     post:
       tags:
@@ -701,8 +693,6 @@ paths:
         '200':
           description: Item marked as deleted
 
-
-  # ===================================== SERVICE EXCHANGE
   /exchanges:
     post:
       tags:
@@ -791,8 +781,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Exchange'
 
-
-  # ===================================== SERVICE CHAT
   /chats:
     get:
       tags:
@@ -904,8 +892,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/Message'
 
-
-  # ===================================== SERVICE EXCHANGE / REVIEWS
   /reviews:
     get:
       tags:
@@ -922,7 +908,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Review'
-
     post:
       tags:
         - Exchange
