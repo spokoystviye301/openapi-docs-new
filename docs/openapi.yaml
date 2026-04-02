@@ -1,36 +1,855 @@
 openapi: 3.0.3
 info:
-  title: My API Documentation
-  description: Backend API для MVP проекта
+  title: ReFash API (MVP)
+  description: Минимально жизнеспособный API сервиса обмена вещами с интеграцией Retoucher
   version: 1.0.0
+
 servers:
-  - url: https://api.example.com/v1
+  - url: https://api.refash.ru/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation failed"
+
+    Timestamp:
+      type: string
+      format: date-time
+
+    UserRef:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "usr-123"
+        firstName:
+          type: string
+        lastName:
+          type: string
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+          nullable: true
+
+    ItemImage:
+      type: object
+      properties:
+        imageId:
+          type: string
+        itemId:
+          type: string
+        originalUrl:
+          type: string
+          format: uri
+        processedUrl:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          type: string
+          enum: ["pending", "processing", "success", "failed"]
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    ItemImageBatchStatus:
+      type: object
+      properties:
+        batchId:
+          type: string
+          example: "batch-123"
+        total:
+          type: integer
+          example: 5
+        processed:
+          type: integer
+          example: 3
+        failed:
+          type: integer
+          example: 1
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemImage'
+
+    ItemImageUploadRequest:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+          minItems: 1
+          maxItems: 5
+
+    Item:
+      type: object
+      properties:
+        itemId:
+          type: string
+        userId:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserRef'
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        condition:
+          type: string
+          enum: ["excellent", "good", "fair", "poor"]
+        city:
+          type: string
+        status:
+          type: string
+          enum: ["available", "in_exchange", "exchanged"]
+        desiredCategories:
+          type: array
+          items:
+            type: string
+        desiredBrands:
+          type: array
+          items:
+            type: string
+        imageIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    ItemCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        condition:
+          type: string
+        city:
+          type: string
+        desiredCategories:
+          type: array
+          items:
+            type: string
+        desiredBrands:
+          type: array
+          items:
+            type: string
+
+    Exchange:
+      type: object
+      properties:
+        exchangeId:
+          type: string
+        initiatorId:
+          type: string
+        recipientId:
+          type: string
+        initiatorItemId:
+          type: string
+        recipientItemId:
+          type: string
+        status:
+          type: string
+          enum: ["proposed", "rejected", "in_progress", "completed", "cancelled"]
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    Review:
+      type: object
+      properties:
+        reviewId:
+          type: string
+        exchangeId:
+          type: string
+        reviewerId:
+          type: string
+        reviewedUserId:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        reviewText:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    Message:
+      type: object
+      properties:
+        messageId:
+          type: string
+        senderId:
+          type: string
+        text:
+          type: string
+          nullable: true
+        mediaUrl:
+          type: string
+          nullable: true
+        sentAt:
+          $ref: '#/components/schemas/Timestamp'
+        readAt:
+          $ref: '#/components/schemas/Timestamp'
+          nullable: true
+
+    Chat:
+      type: object
+      properties:
+        chatId:
+          type: string
+        exchangeId:
+          type: string
+        lastMessageDate:
+          $ref: '#/components/schemas/Timestamp'
+        unreadCount:
+          type: integer
+          example: 2
+
 paths:
-  /users:
-    get:
-      summary: Получить список пользователей
-      tags:
-        - Users
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
+  /auth/register:
+    post:
+      summary: Register user by email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - city
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                city:
+                  type: string
+      responses:
+        '201':
+          description: User created, waiting for email verification
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      summary: Login by email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
       responses:
         '200':
-          description: Список пользователей
+          description: Login successful, returns JWT
+        '401':
+          description: Invalid credentials
+
+  /auth/me:
+    get:
+      summary: Get current user data and subscription status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user and subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRef'
+
+  /auth/request-password-reset:
+    post:
+      summary: Request password reset link by email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Password reset email sent
+        '404':
+          description: User not found
+
+  /auth/reset-password:
+    post:
+      summary: Reset password by token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password updated
+
+  /profile:
+    get:
+      summary: Get own profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Own profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRef'
+    put:
+      summary: Update own profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+
+  /subscription/start:
+    post:
+      summary: Start subscription purchase flow (one fixed plan)
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Subscription draft created
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
+                  subscriptionId:
+                    type: string
+
+  /subscription/payment-url:
+    get:
+      summary: Get redirect URL to payment gateway (Yandex‑Kassa)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+
+  /webhook/yandex-kassa:
+    post:
+      summary: Payment gateway webhook (Yandex‑Kassa)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook processed
+
+  /images/bulk-upload:
+    post:
+      summary: Upload 1–5 images for item (async Retoucher processing)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ItemImageUploadRequest'
+      responses:
+        '201':
+          description: Batch created with pending status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  imageIds:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        name:
-                          type: string
+                      type: string
+        '400':
+          description: Validation or permission error
+
+  /images/batch/{batchId}/status:
+    get:
+      summary: Get batch processing status (pending/processing/failed)
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Batch status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemImageBatchStatus'
+
+  /images/{imageId}/status:
+    get:
+      summary: Get individual image processing status
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemImage'
+
+  /items:
+    get:
+      summary: Get items catalog (public)
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: brand
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Catalog list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+    post:
+      summary: Create item (only if all images have status = success)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreateRequest'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '403':
+          description: Not all images processed or some failed
+
+  /items/my:
+    get:
+      summary: Get user's items
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User items list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/{itemId}:
+    get:
+      summary: Get item details
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+    put:
+      summary: Update item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreateRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+    delete:
+      summary: Delete item (soft)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item marked as deleted
+
+  /exchanges:
+    post:
+      summary: Initiate exchange
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - initiatorItemId
+                - recipientItemId
+              properties:
+                initiatorItemId:
+                  type: string
+                recipientItemId:
+                  type: string
+      responses:
+        '201':
+          description: Exchange created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exchange'
+
+  /exchanges/{exchangeId}/accept:
+    post:
+      summary: Accept exchange proposal
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exchangeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exchange accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exchange'
+
+  /exchanges/{exchangeId}/cancel:
+    post:
+      summary: Cancel exchange (before accept)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exchangeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exchange cancelled
+
+  /exchanges/{exchangeId}/complete:
+    post:
+      summary: Complete exchange
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exchangeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exchange completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exchange'
+
+  /chats:
+    get:
+      summary: Get user chats list
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chats list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Chat'
+
+  /chats/{chatId}:
+    get:
+      summary: Get chat details and messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat and messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chat:
+                    $ref: '#/components/schemas/Chat'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+    post:
+      summary: Send message to chat
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  nullable: true
+                image:
+                  type: string
+                  format: binary
+                  nullable: true
+      responses:
+        '201':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /chats/{chatId}/messages:
+    get:
+      summary: Get messages with pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Message list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+  /reviews:
+    get:
+      summary: Get reviews received by current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+    post:
+      summary: Leave review after completed exchange
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          description: Invalid review state
